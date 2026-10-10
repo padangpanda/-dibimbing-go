@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Golang Application Service
+  # ==========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tiketkilat-app
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=tiketkilat_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - tiketkilat-network
+
+  # ==========================================
+  # PostgreSQL Database Service
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: tiketkilat-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=tiketkilat_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Opsional: Uncomment baris di bawah jika ada file DDL/schema SQL awal
+      # - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tiketkilat_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - tiketkilat-network
+
+  # ==========================================
+  # Redis Cache & Lock Service
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: tiketkilat-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - tiketkilat-network
+
+# ==========================================
+# Persistent Volumes & Network
+# ==========================================
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  tiketkilat-network:
+    driver: bridge
