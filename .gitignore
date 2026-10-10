@@ -1,0 +1,9 @@
+.env
+.env.*
+
+/bin
+/build
+/dist
+
+go.work
+go.work.sum
